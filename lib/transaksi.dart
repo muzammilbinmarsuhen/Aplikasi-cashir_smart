@@ -1,8 +1,6 @@
 import 'produk.dart';
-import 'dart:convert' as json;
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
 class CartItem {
