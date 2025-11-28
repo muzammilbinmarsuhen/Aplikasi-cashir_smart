@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../screens/report_screen.dart';
+import '../screens/transaction_detail_screen.dart';
 
 class TransactionCard extends StatelessWidget {
   final Transaction transaction;
@@ -39,9 +40,10 @@ class TransactionCard extends StatelessWidget {
           ),
         ),
         onTap: () {
-          // TODO: Navigate to transaction detail
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Detail transaksi ${transaction.id}')),
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => TransactionDetailScreen(transaction: transaction),
+            ),
           );
         },
       ),
