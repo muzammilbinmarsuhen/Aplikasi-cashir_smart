@@ -22,79 +22,75 @@ class Product {
   });
 }
 
-// Data dummy produk
+// Data dummy produk cafe
 final List<Product> dummyProducts = [
   Product(
     id: '1',
-    name: 'Buku Coding Algoritma',
-    imageUrl: 'https://picsum.photos/200/200?random=1',
+    name: 'Espresso',
+    imageUrl: 'espresso.jpg',
     rating: 4.9,
-    sold: 4000,
-    price: 30500,
-    discount: 24,
+    sold: 1250,
+    price: 25000,
+    discount: 10,
   ),
   Product(
     id: '2',
-    name: 'Sarung Tangan Nitril',
-    imageUrl: 'https://picsum.photos/200/200?random=2',
+    name: 'Cappuccino',
+    imageUrl: 'cappuccino.jpg',
     rating: 4.8,
-    sold: 1000,
-    price: 43700,
-    discount: 56,
+    sold: 980,
+    price: 35000,
   ),
   Product(
     id: '3',
-    name: 'Smart Tasbih Digital',
-    imageUrl: 'https://picsum.photos/200/200?random=3',
+    name: 'Nasi Goreng Special',
+    imageUrl: 'nasi_goreng.jpg',
     rating: 4.7,
-    sold: 250,
-    price: 87474,
-    discount: 72,
-  ),
-  Product(
-    id: '4',
-    name: 'Headphone Gaming RGB',
-    imageUrl: 'https://picsum.photos/200/200?random=4',
-    rating: 4.6,
-    sold: 850,
-    price: 125000,
-    discount: 35,
-  ),
-  Product(
-    id: '5',
-    name: 'Power Bank 20000mAh',
-    imageUrl: 'https://picsum.photos/200/200?random=5',
-    rating: 4.8,
-    sold: 3200,
-    price: 89000,
+    sold: 750,
+    price: 45000,
     discount: 15,
   ),
   Product(
+    id: '4',
+    name: 'Ayam Bakar Madu',
+    imageUrl: 'ayam_bakar.jpg',
+    rating: 4.8,
+    sold: 620,
+    price: 55000,
+  ),
+  Product(
+    id: '5',
+    name: 'Teh Tarik',
+    imageUrl: 'teh_tarik.jpg',
+    rating: 4.6,
+    sold: 890,
+    price: 18000,
+    discount: 5,
+  ),
+  Product(
     id: '6',
-    name: 'Mouse Gaming Wireless',
-    imageUrl: 'https://picsum.photos/200/200?random=6',
-    rating: 4.5,
-    sold: 675,
-    price: 156000,
-    discount: 28,
+    name: 'Mie Ayam Special',
+    imageUrl: 'mie_ayam.jpg',
+    rating: 4.7,
+    sold: 540,
+    price: 38000,
   ),
   Product(
     id: '7',
-    name: 'Keyboard Mechanical RGB',
-    imageUrl: 'https://picsum.photos/200/200?random=7',
+    name: 'Sate Ayam',
+    imageUrl: 'sate_ayam.jpg',
     rating: 4.9,
-    sold: 1200,
-    price: 234000,
-    discount: 42,
+    sold: 420,
+    price: 42000,
+    discount: 20,
   ),
   Product(
     id: '8',
-    name: 'Webcam HD 1080p',
-    imageUrl: 'https://picsum.photos/200/200?random=8',
-    rating: 4.4,
-    sold: 450,
-    price: 187000,
-    discount: 20,
+    name: 'Jus Jeruk Fresh',
+    imageUrl: 'jus_jeruk.jpg',
+    rating: 4.5,
+    sold: 380,
+    price: 22000,
   ),
 ];
 
@@ -268,10 +264,29 @@ class _ProdukPageState extends State<ProdukPage> {
                   final product = dummyProducts[index];
                   return GestureDetector(
                     onTap: () => _addToCart(product),
-                    child: Card(
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.white,
+                            Colors.grey[50]!,
+                          ],
+                        ),
+                        boxShadow: [
+                          const BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 8,
+                            offset: Offset(0, 4),
+                          ),
+                          const BoxShadow(
+                            color: Color.fromRGBO(33, 150, 243, 0.05),
+                            blurRadius: 12,
+                            offset: Offset(0, 8),
+                          ),
+                        ],
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -279,25 +294,46 @@ class _ProdukPageState extends State<ProdukPage> {
                           // Product Image
                           AspectRatio(
                             aspectRatio: 1,
-                            child: ClipRRect(
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(8),
-                                topRight: Radius.circular(8),
-                              ),
-                              child: Image.network(
-                                product.imageUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    color: Colors.grey[200],
+                            child: Stack(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(16),
+                                    topRight: Radius.circular(16),
+                                  ),
+                                  child: Image.asset(
+                                    product.imageUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        color: Colors.grey[100],
+                                        child: const Icon(
+                                          Icons.restaurant_menu,
+                                          size: 48,
+                                          color: Colors.grey,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                // Favorite icon
+                                Positioned(
+                                  top: 8,
+                                  right: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.white70,
+                                      shape: BoxShape.circle,
+                                    ),
                                     child: const Icon(
-                                      Icons.image,
-                                      size: 48,
+                                      Icons.favorite_border,
+                                      size: 16,
                                       color: Colors.grey,
                                     ),
-                                  );
-                                },
-                              ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
 
@@ -324,85 +360,141 @@ class _ProdukPageState extends State<ProdukPage> {
                                   // Promo Chip
                                   if (product.discount != null)
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: Colors.green,
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Text(
-                                        '${product.discount}% OFF',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
+                                        gradient: const LinearGradient(
+                                          colors: [Colors.red, Colors.orange],
                                         ),
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [
+                                          const BoxShadow(
+                                            color: Color.fromRGBO(244, 67, 54, 0.3),
+                                            blurRadius: 4,
+                                            offset: Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.local_offer,
+                                            size: 12,
+                                            color: Colors.white,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            '${product.discount}% OFF',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
 
                                   const SizedBox(height: 4),
 
                                   // Rating and Sold
-                                  Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.star,
-                                        size: 12,
-                                        color: Colors.amber,
-                                      ),
-                                      Text(
-                                        '${product.rating}',
-                                        style: const TextStyle(
-                                          fontSize: 10,
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: const Color.fromRGBO(255, 193, 7, 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.star,
+                                          size: 14,
+                                          color: Colors.amber,
+                                        ),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          '${product.rating}',
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          width: 1,
+                                          height: 12,
+                                          color: Colors.grey[400],
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Icon(
+                                          Icons.shopping_cart,
+                                          size: 12,
                                           color: Colors.grey,
                                         ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        _formatSoldCount(product.sold),
-                                        style: const TextStyle(
-                                          fontSize: 10,
-                                          color: Colors.grey,
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          _formatSoldCount(product.sold),
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.grey,
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
 
                                   const Spacer(),
 
                                   // Price
-                                  Text(
-                                    _formatPrice(product.price),
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.blue,
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: const Color.fromRGBO(33, 150, 243, 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      _formatPrice(product.price),
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blue,
+                                      ),
                                     ),
                                   ),
 
-                                  const SizedBox(height: 4),
+                                  const SizedBox(height: 8),
 
                                   // Bottom row
                                   Row(
                                     children: [
-                                      const Text(
-                                        'Cicilan 0%',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          color: Colors.grey,
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: const Color.fromRGBO(76, 175, 80, 0.1),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: const Text(
+                                          'Tersedia',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.green,
+                                            fontWeight: FontWeight.w500,
+                                          ),
                                         ),
                                       ),
                                       const Spacer(),
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.more_vert,
-                                          size: 16,
-                                          color: Colors.grey,
+                                      Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: const Color.fromRGBO(158, 158, 158, 0.1),
+                                          shape: BoxShape.circle,
                                         ),
-                                        onPressed: () {
-                                          // More options (placeholder)
-                                        },
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(),
+                                        child: const Icon(
+                                          Icons.add_shopping_cart,
+                                          size: 16,
+                                          color: Colors.blue,
+                                        ),
                                       ),
                                     ],
                                   ),
