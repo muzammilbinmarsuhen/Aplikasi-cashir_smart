@@ -1,14 +1,23 @@
 import 'package:flutter/material.dart';
 import '../screens/product_screen.dart';
 
-class ProductCard extends StatelessWidget {
+class ProductCard extends StatefulWidget {
   final Product product;
+  final bool isSelected;
+  final Function(bool) onSelectionChanged;
 
   const ProductCard({
     super.key,
     required this.product,
+    required this.isSelected,
+    required this.onSelectionChanged,
   });
 
+  @override
+  State<ProductCard> createState() => _ProductCardState();
+}
+
+class _ProductCardState extends State<ProductCard> {
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -17,6 +26,17 @@ class ProductCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
+            // Checkbox untuk checkout
+            Checkbox(
+              value: widget.isSelected,
+              onChanged: widget.product.isActive ? (value) {
+                widget.onSelectionChanged(value ?? false);
+              } : null,
+              activeColor: Colors.blue,
+            ),
+
+            const SizedBox(width: 8),
+
             // Icon di kiri
             Container(
               width: 40,
@@ -42,9 +62,10 @@ class ProductCard extends StatelessWidget {
                   // Nama produk
                   Text(
                     product.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
+                      color: widget.product.isActive ? Colors.black : Colors.grey,
                     ),
                   ),
 
@@ -55,7 +76,7 @@ class ProductCard extends StatelessWidget {
                     '${product.category}  •  Kode: ${product.code}',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[600],
+                      color: widget.product.isActive ? Colors.grey[600] : Colors.grey[400],
                     ),
                   ),
 
@@ -66,7 +87,7 @@ class ProductCard extends StatelessWidget {
                     'Stok: ${product.code}',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[600],
+                      color: widget.product.isActive ? Colors.grey[600] : Colors.grey[400],
                     ),
                   ),
                 ],
@@ -77,11 +98,11 @@ class ProductCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: product.isActive ? Colors.green : Colors.grey,
+                color: widget.product.isActive ? Colors.green : Colors.grey,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
-                product.isActive ? 'Aktif' : 'Tidak Aktif',
+                widget.product.isActive ? 'Aktif' : 'Tidak Aktif',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 10,
@@ -94,4 +115,6 @@ class ProductCard extends StatelessWidget {
       ),
     );
   }
+
+  Product get product => widget.product;
 }

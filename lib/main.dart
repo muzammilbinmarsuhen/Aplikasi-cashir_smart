@@ -28,7 +28,12 @@ class CashirSmartApp extends StatelessWidget {
           elevation: 0,
         ),
       ),
-      home: const MainScreen(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const MainScreen(),
+        '/cashier': (context) => const CashierScreen(),
+        '/reports': (context) => const ReportScreen(),
+      },
     );
   }
 }

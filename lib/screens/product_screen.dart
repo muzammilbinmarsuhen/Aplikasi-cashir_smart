@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/product_card.dart';
+import '../models/cart_manager.dart';
 
 // Model untuk Product
 class Product {
@@ -8,6 +9,7 @@ class Product {
   final String category;
   final String code;
   final bool isActive;
+  final int price;
 
   const Product({
     required this.id,
@@ -15,6 +17,7 @@ class Product {
     required this.category,
     required this.code,
     required this.isActive,
+    required this.price,
   });
 }
 
@@ -26,6 +29,7 @@ final List<Product> dummyProducts = [
     category: 'Makanan',
     code: 'PRC001',
     isActive: true,
+    price: 25000,
   ),
   const Product(
     id: '2',
@@ -33,6 +37,7 @@ final List<Product> dummyProducts = [
     category: 'Makanan',
     code: 'PRC002',
     isActive: true,
+    price: 35000,
   ),
   const Product(
     id: '3',
@@ -40,6 +45,7 @@ final List<Product> dummyProducts = [
     category: 'Minuman',
     code: 'PRC003',
     isActive: true,
+    price: 8000,
   ),
   const Product(
     id: '4',
@@ -47,6 +53,7 @@ final List<Product> dummyProducts = [
     category: 'Makanan',
     code: 'PRC004',
     isActive: true,
+    price: 20000,
   ),
   const Product(
     id: '5',
@@ -54,6 +61,7 @@ final List<Product> dummyProducts = [
     category: 'Minuman',
     code: 'PRC005',
     isActive: false,
+    price: 12000,
   ),
   const Product(
     id: '6',
@@ -61,6 +69,7 @@ final List<Product> dummyProducts = [
     category: 'Makanan',
     code: 'PRC006',
     isActive: true,
+    price: 30000,
   ),
 ];
 
@@ -74,6 +83,7 @@ class ProductScreen extends StatefulWidget {
 class _ProductScreenState extends State<ProductScreen> {
   String _searchQuery = '';
   String _selectedCategory = 'Semua';
+  final Set<String> _selectedProductIds = {};
 
   List<Product> get _filteredProducts {
     return dummyProducts.where((product) {
@@ -82,6 +92,35 @@ class _ProductScreenState extends State<ProductScreen> {
       final matchesCategory = _selectedCategory == 'Semua' || product.category == _selectedCategory;
       return matchesSearch && matchesCategory;
     }).toList();
+  }
+
+  void _onProductSelectionChanged(Product product, bool isSelected) {
+    setState(() {
+      if (isSelected) {
+        _selectedProductIds.add(product.id);
+        CartManager().addToCart(CartItem(
+          id: product.id,
+          name: product.name,
+          quantity: 1,
+          price: product.price,
+        ));
+      } else {
+        _selectedProductIds.remove(product.id);
+        CartManager().removeFromCart(product.id);
+      }
+    });
+  }
+
+  void _checkoutSelectedProducts() {
+    if (_selectedProductIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih produk terlebih dahulu')),
+      );
+      return;
+    }
+
+    // Navigate to cashier screen
+    Navigator.pushNamed(context, '/cashier');
   }
 
   @override
@@ -175,22 +214,33 @@ class _ProductScreenState extends State<ProductScreen> {
               itemCount: _filteredProducts.length,
               itemBuilder: (context, index) {
                 final product = _filteredProducts[index];
-                return ProductCard(product: product);
+                return ProductCard(
+                  product: product,
+                  isSelected: _selectedProductIds.contains(product.id),
+                  onSelectionChanged: (isSelected) => _onProductSelectionChanged(product, isSelected),
+                );
               },
             ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // TODO: Navigate to add product screen
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Tambah produk - fitur coming soon!')),
-          );
-        },
-        backgroundColor: Colors.blue[800],
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: _selectedProductIds.isNotEmpty
+          ? FloatingActionButton.extended(
+              onPressed: _checkoutSelectedProducts,
+              backgroundColor: Colors.green,
+              icon: const Icon(Icons.shopping_cart_checkout),
+              label: Text('${_selectedProductIds.length} item dipilih'),
+            )
+          : FloatingActionButton(
+              onPressed: () {
+                // TODO: Navigate to add product screen
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Tambah produk - fitur coming soon!')),
+                );
+              },
+              backgroundColor: Colors.blue[800],
+              child: const Icon(Icons.add),
+            ),
     );
   }
 }
