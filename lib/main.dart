@@ -1,8 +1,11 @@
 import 'login.dart';
+import 'produk.dart';
 
 import 'package:flutter/material.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await api.init();
   runApp(const SmartCashierApp());
 }
 
@@ -20,7 +23,7 @@ class SmartCashierApp extends StatelessWidget {
         colorSchemeSeed: Colors.teal,
         scaffoldBackgroundColor: const Color(0xFFF6F6F6),
       ),
-      home: const LoginPage(),
+      home: api.token != null ? const HomePage() : const LoginPage(),
     );
   }
 }

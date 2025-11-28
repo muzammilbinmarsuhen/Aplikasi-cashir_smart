@@ -151,6 +151,15 @@ class _HomePageState extends State<HomePage> {
     ReportsPage(),
   ];
 
+  Future<void> _logout() async {
+    await api.logout();
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -160,6 +169,13 @@ class _HomePageState extends State<HomePage> {
         title: const Text('Smart Cashier'),
         backgroundColor: cs.primary,
         foregroundColor: cs.onPrimary,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+            tooltip: 'Logout',
+          ),
+        ],
       ),
       body: IndexedStack(
         index: index,

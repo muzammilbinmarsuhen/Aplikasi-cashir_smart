@@ -3,6 +3,9 @@ import 'dart:convert' as json;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'login.dart';
 
 // ====================== MODEL ======================
 
@@ -51,11 +54,43 @@ class Product {
 
 class ApiService {
   // ganti sesuai backend-mu
-  static const String baseUrl = 'http://127.0.0.1:8001/api';
+  static const String baseUrl = 'http://127.0.0.1:8000';
+
+  static const String _tokenKey = 'auth_token';
+  static const String _userKey = 'user_data';
 
   String? _token;
+  Map<String, dynamic>? _user;
 
   String? get token => _token;
+  Map<String, dynamic>? get user => _user;
+
+  Future<void> _loadToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    _token = prefs.getString(_tokenKey);
+    final userJson = prefs.getString(_userKey);
+    if (userJson != null) {
+      _user = json.jsonDecode(userJson);
+    }
+  }
+
+  Future<void> _saveToken(String token, [Map<String, dynamic>? userData]) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_tokenKey, token);
+    _token = token;
+    if (userData != null) {
+      await prefs.setString(_userKey, json.jsonEncode(userData));
+      _user = userData;
+    }
+  }
+
+  Future<void> _clearToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_tokenKey);
+    await prefs.remove(_userKey);
+    _token = null;
+    _user = null;
+  }
 
   Map<String, String> _headers({bool withAuth = false}) {
     final h = {
@@ -68,9 +103,12 @@ class ApiService {
     return h;
   }
 
+  Future<void> init() async {
+    await _loadToken();
+  }
+
   Future<void> login(String email, String password) async {
-    final url = Uri.parse('$baseUrl/login');
-    print('DEBUG: Attempting login to $url with email: $email');
+    final url = Uri.parse('$baseUrl/api/login');
     final res = await http.post(
       url,
       headers: _headers(),
@@ -79,21 +117,48 @@ class ApiService {
         'password': password,
       }),
     );
-    print('DEBUG: Response status: ${res.statusCode}');
-    print('DEBUG: Response body: ${res.body}');
-    print('DEBUG: Response headers: ${res.headers}');
 
     if (res.statusCode == 200) {
       final data = json.jsonDecode(res.body);
-      _token = data['token'];
-      print('DEBUG: Login successful, token received');
+      final token = data['token'] ?? data['access_token'];
+      if (token != null) {
+        await _saveToken(token, data['user']);
+      } else {
+        throw Exception('Token tidak ditemukan dalam response');
+      }
     } else {
-      throw Exception('Login gagal: ${res.body}');
+      final errorData = json.jsonDecode(res.body);
+      throw Exception(errorData['message'] ?? 'Login gagal');
+    }
+  }
+
+  Future<void> logout() async {
+    try {
+      final url = Uri.parse('$baseUrl/api/logout');
+      await http.post(url, headers: _headers(withAuth: true));
+    } catch (_) {
+      // Ignore logout errors
+    }
+    await _clearToken();
+  }
+
+  Future<Map<String, dynamic>?> getMe() async {
+    final url = Uri.parse('$baseUrl/api/me');
+    final res = await http.get(url, headers: _headers(withAuth: true));
+
+    if (res.statusCode == 200) {
+      final data = json.jsonDecode(res.body);
+      return data['user'] ?? data;
+    } else if (res.statusCode == 401) {
+      await _clearToken(); // Token invalid
+      throw Exception('Sesi berakhir, silakan login kembali');
+    } else {
+      throw Exception('Gagal mengambil data user');
     }
   }
 
   Future<List<Product>> getProducts({String? query}) async {
-    final url = Uri.parse('$baseUrl/products');
+    final url = Uri.parse('$baseUrl/api/products');
     final res = await http.get(url, headers: _headers(withAuth: true));
 
     if (res.statusCode == 200) {
@@ -104,13 +169,16 @@ class ApiService {
         return p.name.toLowerCase().contains(q) ||
             p.code.toLowerCase().contains(q);
       }).toList();
+    } else if (res.statusCode == 401) {
+      await _clearToken();
+      throw Exception('Sesi berakhir, silakan login kembali');
     } else {
       throw Exception('Gagal mengambil produk');
     }
   }
 
   Future<Product> createProduct(Product p) async {
-    final url = Uri.parse('$baseUrl/products');
+    final url = Uri.parse('$baseUrl/api/products');
     final res = await http.post(
       url,
       headers: _headers(withAuth: true),
@@ -119,13 +187,16 @@ class ApiService {
     if (res.statusCode == 201 || res.statusCode == 200) {
       final data = json.jsonDecode(res.body);
       return Product.fromJson(data['data'] ?? data);
+    } else if (res.statusCode == 401) {
+      await _clearToken();
+      throw Exception('Sesi berakhir, silakan login kembali');
     } else {
       throw Exception('Gagal menambah produk');
     }
   }
 
   Future<Product> updateProduct(int id, Product p) async {
-    final url = Uri.parse('$baseUrl/products/$id');
+    final url = Uri.parse('$baseUrl/api/products/$id');
     final res = await http.put(
       url,
       headers: _headers(withAuth: true),
@@ -134,25 +205,34 @@ class ApiService {
     if (res.statusCode == 200) {
       final data = json.jsonDecode(res.body);
       return Product.fromJson(data['data'] ?? data);
+    } else if (res.statusCode == 401) {
+      await _clearToken();
+      throw Exception('Sesi berakhir, silakan login kembali');
     } else {
       throw Exception('Gagal mengupdate produk');
     }
   }
 
   Future<void> deleteProduct(int id) async {
-    final url = Uri.parse('$baseUrl/products/$id');
+    final url = Uri.parse('$baseUrl/api/products/$id');
     final res = await http.delete(url, headers: _headers(withAuth: true));
-    if (res.statusCode != 200 && res.statusCode != 204) {
+    if (res.statusCode == 401) {
+      await _clearToken();
+      throw Exception('Sesi berakhir, silakan login kembali');
+    } else if (res.statusCode != 200 && res.statusCode != 204) {
       throw Exception('Gagal menghapus produk');
     }
   }
 
   Future<List<Product>> getRecommendations() async {
-    final url = Uri.parse('$baseUrl/products/recommendations');
+    final url = Uri.parse('$baseUrl/api/products/recommendations');
     final res = await http.get(url, headers: _headers(withAuth: true));
     if (res.statusCode == 200) {
       final List list = json.jsonDecode(res.body)['data'] ?? json.jsonDecode(res.body);
       return list.map((e) => Product.fromJson(e)).toList();
+    } else if (res.statusCode == 401) {
+      await _clearToken();
+      throw Exception('Sesi berakhir, silakan login kembali');
     } else {
       throw Exception('Gagal mengambil rekomendasi produk');
     }
@@ -162,7 +242,7 @@ class ApiService {
     List<Map<String, dynamic>> cartItems,
     int paidAmount,
   ) async {
-    final url = Uri.parse('$baseUrl/transactions');
+    final url = Uri.parse('$baseUrl/api/transactions');
     final res = await http.post(
       url,
       headers: _headers(withAuth: true),
@@ -175,8 +255,12 @@ class ApiService {
     if (res.statusCode == 201 || res.statusCode == 200) {
       final data = json.jsonDecode(res.body)['data'] ?? json.jsonDecode(res.body);
       return data;
+    } else if (res.statusCode == 401) {
+      await _clearToken();
+      throw Exception('Sesi berakhir, silakan login kembali');
     } else {
-      throw Exception('Gagal checkout: ${res.body}');
+      final errorData = json.jsonDecode(res.body);
+      throw Exception(errorData['message'] ?? 'Gagal checkout');
     }
   }
 
@@ -185,9 +269,9 @@ class ApiService {
     Uri url;
     if (date != null) {
       final d = DateFormat('yyyy-MM-dd').format(date);
-      url = Uri.parse('$baseUrl/reports/daily?date=$d');
+      url = Uri.parse('$baseUrl/api/reports/daily?date=$d');
     } else {
-      url = Uri.parse('$baseUrl/transactions');
+      url = Uri.parse('$baseUrl/api/transactions');
     }
 
     final res = await http.get(url, headers: _headers(withAuth: true));
@@ -195,6 +279,9 @@ class ApiService {
       final body = json.jsonDecode(res.body);
       final List list = body['data'] is List ? body['data'] : (body as List);
       return list.cast<Map<String, dynamic>>();
+    } else if (res.statusCode == 401) {
+      await _clearToken();
+      throw Exception('Sesi berakhir, silakan login kembali');
     } else {
       throw Exception('Gagal mengambil transaksi');
     }
@@ -297,7 +384,7 @@ class _ProductsPageState extends State<ProductsPage> {
           isActive: isActive,
         );
         if (isEdit) {
-          await api.updateProduct(product!.id!, p);
+          await api.updateProduct(product.id as int, p);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Produk berhasil diupdate')),
@@ -387,7 +474,17 @@ class _ProductsPageState extends State<ProductsPage> {
                       child: CircularProgressIndicator(strokeWidth: 2));
                 }
                 if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
+                  final error = snapshot.error.toString();
+                  if (error.contains('Sesi berakhir') || error.contains('401')) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LoginPage()),
+                      );
+                    });
+                    return const Center(child: Text('Sesi berakhir, mengarahkan ke login...'));
+                  }
+                  return Center(child: Text('Error: $error'));
                 }
                 final products = snapshot.data ?? [];
                 if (products.isEmpty) {
