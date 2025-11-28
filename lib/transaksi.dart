@@ -1,4 +1,5 @@
 import 'produk.dart';
+import 'laporan.dart';
 
 import 'package:flutter/material.dart';
 
@@ -46,7 +47,9 @@ class Transaction {
 // ====================== TRANSACTION PAGE ======================
 
 class TransactionPage extends StatefulWidget {
-  const TransactionPage({super.key});
+  final Map<int, int>? selectedProducts;
+
+  const TransactionPage({super.key, this.selectedProducts});
 
   @override
   State<TransactionPage> createState() => _TransactionPageState();
@@ -63,6 +66,26 @@ class _TransactionPageState extends State<TransactionPage> {
   void initState() {
     super.initState();
     _loadRecommendations();
+    _initializeCartFromSelectedProducts();
+  }
+
+  Future<void> _initializeCartFromSelectedProducts() async {
+    if (widget.selectedProducts != null && widget.selectedProducts!.isNotEmpty) {
+      try {
+        final allProducts = await api.getProducts();
+        final selectedProductIds = widget.selectedProducts!.keys.toSet();
+
+        for (final product in allProducts) {
+          if (selectedProductIds.contains(product.id)) {
+            final qty = widget.selectedProducts![product.id]!;
+            cart.add(CartItem(product: product, qty: qty));
+          }
+        }
+        setState(() {});
+      } catch (e) {
+        // Handle error silently
+      }
+    }
   }
 
   Future<void> _loadRecommendations() async {
@@ -125,27 +148,16 @@ class _TransactionPageState extends State<TransactionPage> {
 
     try {
       final items = cart.map((e) => {'product_id': e.product.id, 'qty': e.qty}).toList();
-      final data = await api.checkout(items, paidAmount);
-      final trx = Transaction.fromJson(data);
+      await api.checkout(items, paidAmount);
       if (!mounted) return;
-      final change = paidAmount - total;
       setState(() {
         cart.clear();
         paidC.clear();
       });
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Transaksi Berhasil'),
-          content: Text(
-              'No: ${trx.invoiceNumber}\nTotal: Rp $total\nBayar: Rp $paidAmount\nKembali: Rp $change'),
-          actions: [
-            FilledButton(
-              child: const Text('OK'),
-              onPressed: () => Navigator.pop(ctx),
-            ),
-          ],
-        ),
+      // Navigate to Reports page after successful transaction
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const ReportsPage()),
       );
     } catch (e) {
       if (!mounted) return;

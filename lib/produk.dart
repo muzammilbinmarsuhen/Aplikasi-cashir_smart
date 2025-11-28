@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'login.dart';
+import 'transaksi.dart';
 
 // ====================== MODEL ======================
 
@@ -302,6 +303,7 @@ class ProductsPage extends StatefulWidget {
 class _ProductsPageState extends State<ProductsPage> {
   String _search = '';
   late Future<List<Product>> _future;
+  final Map<int, int> _selectedProducts = {}; // product_id -> quantity
 
   @override
   void initState() {
@@ -312,6 +314,53 @@ class _ProductsPageState extends State<ProductsPage> {
   void _reload() {
     setState(() {
       _future = api.getProducts(query: _search);
+    });
+  }
+
+  void _addToCart(Product product) {
+    setState(() {
+      final productId = product.id!;
+      _selectedProducts[productId] = (_selectedProducts[productId] ?? 0) + 1;
+    });
+  }
+
+  void _removeFromCart(Product product) {
+    setState(() {
+      final productId = product.id!;
+      if (_selectedProducts.containsKey(productId)) {
+        _selectedProducts[productId] = _selectedProducts[productId]! - 1;
+        if (_selectedProducts[productId]! <= 0) {
+          _selectedProducts.remove(productId);
+        }
+      }
+    });
+  }
+
+  int _getSelectedQuantity(Product product) {
+    return _selectedProducts[product.id] ?? 0;
+  }
+
+  int get _totalItems => _selectedProducts.values.fold(0, (sum, qty) => sum + qty);
+
+  Future<void> _proceedToCheckout() async {
+    if (_selectedProducts.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih produk terlebih dahulu')),
+      );
+      return;
+    }
+
+    // Navigate to TransactionPage with selected products
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TransactionPage(selectedProducts: _selectedProducts),
+      ),
+    ).then((_) {
+      // Clear selection when returning
+      setState(() {
+        _selectedProducts.clear();
+      });
     });
   }
 
@@ -409,139 +458,230 @@ class _ProductsPageState extends State<ProductsPage> {
     }
   }
 
-  Future<void> _confirmDelete(Product p) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Hapus Produk'),
-        content: Text('Yakin ingin menghapus "${p.name}"?'),
-        actions: [
-          TextButton(
-            child: const Text('Batal'),
-            onPressed: () => Navigator.pop(ctx, false),
-          ),
-          FilledButton(
-            child: const Text('Hapus'),
-            onPressed: () => Navigator.pop(ctx, true),
-          ),
-        ],
-      ),
-    );
-    if (ok == true) {
-      await api.deleteProduct(p.id!);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Produk dihapus')),
-        );
-        _reload();
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        children: [
-          TextField(
-            decoration: InputDecoration(
-              hintText: 'Cari produk...',
-              prefixIcon: const Icon(Icons.search),
-              fillColor: Colors.white,
-              filled: true,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: cs.outlineVariant),
+    return Scaffold(
+      body: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            // Search bar
+            TextField(
+              decoration: InputDecoration(
+                hintText: 'Cari produk...',
+                prefixIcon: const Icon(Icons.search),
+                fillColor: Colors.white,
+                filled: true,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: cs.outlineVariant),
+                ),
               ),
+              onChanged: (v) {
+                _search = v;
+                _reload();
+              },
             ),
-            onChanged: (v) {
-              _search = v;
-              _reload();
-            },
-          ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: FutureBuilder<List<Product>>(
-              future: _future,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                      child: CircularProgressIndicator(strokeWidth: 2));
-                }
-                if (snapshot.hasError) {
-                  final error = snapshot.error.toString();
-                  if (error.contains('Sesi berakhir') || error.contains('401')) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (_) => const LoginPage()),
-                      );
-                    });
-                    return const Center(child: Text('Sesi berakhir, mengarahkan ke login...'));
-                  }
-                  return Center(child: Text('Error: $error'));
-                }
-                final products = snapshot.data ?? [];
-                if (products.isEmpty) {
-                  return const Center(child: Text('Belum ada produk'));
-                }
-                return ListView.separated(
-                  itemCount: products.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (context, i) {
-                    final p = products[i];
-                    return Card(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+            const SizedBox(height: 8),
+            // Cart summary
+            if (_totalItems > 0)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: cs.primaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.shopping_cart, color: cs.primary),
+                    const SizedBox(width: 8),
+                    Text(
+                      '$_totalItems item dipilih',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: cs.primary,
                       ),
-                      child: ListTile(
-                        title: Text(
-                          p.name,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const Spacer(),
+                    FilledButton.icon(
+                      onPressed: _proceedToCheckout,
+                      icon: const Icon(Icons.shopping_cart_checkout),
+                      label: const Text('Checkout'),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 8),
+            // Products grid
+            Expanded(
+              child: FutureBuilder<List<Product>>(
+                future: _future,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2));
+                  }
+                  if (snapshot.hasError) {
+                    final error = snapshot.error.toString();
+                    if (error.contains('Sesi berakhir') || error.contains('401')) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (_) => const LoginPage()),
+                        );
+                      });
+                      return const Center(child: Text('Sesi berakhir, mengarahkan ke login...'));
+                    }
+                    return Center(child: Text('Error: $error'));
+                  }
+                  final products = snapshot.data ?? [];
+                  if (products.isEmpty) {
+                    return const Center(child: Text('Belum ada produk'));
+                  }
+                  return GridView.builder(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 0.75,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                    ),
+                    itemCount: products.length,
+                    itemBuilder: (context, i) {
+                      final p = products[i];
+                      final selectedQty = _getSelectedQuantity(p);
+
+                      return Card(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        subtitle: Text(
-                            'Kode: ${p.code}\nStok: ${p.stock} | Harga: Rp ${p.price}'),
-                        isThreeLine: true,
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
+                        elevation: 4,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit_outlined),
-                              onPressed: p.id == null
-                                  ? null
-                                  : () => _showProductDialog(p),
+                            // Product image placeholder
+                            Container(
+                              height: 120,
+                              decoration: BoxDecoration(
+                                color: cs.surfaceContainerHighest,
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(16),
+                                  topRight: Radius.circular(16),
+                                ),
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  Icons.inventory_2,
+                                  size: 48,
+                                  color: cs.onSurface,
+                                ),
+                              ),
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline),
-                              onPressed: p.id == null
-                                  ? null
-                                  : () => _confirmDelete(p),
+                            Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    p.name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Kode: ${p.code}',
+                                    style: TextStyle(
+                                      color: cs.onSurfaceVariant,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Rp ${p.price}',
+                                    style: TextStyle(
+                                      color: cs.primary,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        'Stok: ${p.stock}',
+                                        style: TextStyle(
+                                          color: cs.onSurfaceVariant,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      const Spacer(),
+                                      if (selectedQty > 0)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: cs.primary,
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Text(
+                                            '$selectedQty',
+                                            style: TextStyle(
+                                              color: cs.onPrimary,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: FilledButton.icon(
+                                          onPressed: () => _addToCart(p),
+                                          icon: const Icon(Icons.add_shopping_cart, size: 16),
+                                          label: const Text('Tambah'),
+                                          style: FilledButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(vertical: 8),
+                                          ),
+                                        ),
+                                      ),
+                                      if (selectedQty > 0) ...[
+                                        const SizedBox(width: 8),
+                                        IconButton(
+                                          onPressed: () => _removeFromCart(p),
+                                          icon: const Icon(Icons.remove_circle),
+                                          color: cs.error,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
-                      ),
-                    );
-                  },
-                );
-              },
+                      );
+                    },
+                  );
+                },
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.bottomRight,
-            child: FloatingActionButton.extended(
-              onPressed: _showProductDialog,
-              icon: const Icon(Icons.add),
-              label: const Text('Produk'),
-            ),
-          ),
-          const SizedBox(height: 8),
-        ],
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showProductDialog,
+        icon: const Icon(Icons.add),
+        label: const Text('Produk Baru'),
       ),
     );
   }

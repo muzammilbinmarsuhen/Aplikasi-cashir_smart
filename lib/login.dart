@@ -1,6 +1,7 @@
 import 'produk.dart';
 import 'transaksi.dart';
 import 'laporan.dart';
+import 'pages/produk.dart';
 
 import 'package:flutter/material.dart';
 
@@ -146,7 +147,7 @@ class _HomePageState extends State<HomePage> {
   int index = 0;
 
   final pages = const [
-    ProductsPage(),
+    ProdukPage(),
     TransactionPage(),
     ReportsPage(),
   ];
